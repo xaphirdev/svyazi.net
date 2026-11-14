@@ -1,0 +1,7 @@
+.idea
+.vscode
+.env
+.local/
+accounts-for-reviewers.tsv
+node_modules/
+.тз.pdf

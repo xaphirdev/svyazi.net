@@ -1,0 +1,13 @@
+[Unit]
+Description=Allow svyazi.net web access and remove database port openings
+Requires=docker.service
+After=docker.service ufw.service firewalld.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/svyazi.net/firewall.sh --apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target docker.service

@@ -1,0 +1,17 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          svyazi.net-firewall
+# Required-Start:    $network $remote_fs docker
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Configure svyazi.net web access
+### END INIT INFO
+
+case "${1:-}" in
+    start|restart|reload|force-reload)
+        /usr/local/lib/svyazi.net/firewall.sh --apply
+        ;;
+    stop) : ;;
+    *) echo "Usage: $0 {start|stop|restart|reload}" >&2; exit 1 ;;
+esac

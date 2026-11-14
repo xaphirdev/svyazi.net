@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>svyazi.net · Веб-отчётность</title>
+  <script>
+    (() => {
+      let savedTheme;
+      try { savedTheme = localStorage.getItem('svyazi.net-theme'); } catch {}
+      const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : systemTheme;
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <noscript><style>#startup-note { display: none; }</style><p class="startup-note">Для просмотра макета включите JavaScript.</p></noscript>
+  <p id="startup-note" class="startup-note">Запустите <code>go run .</code> в папке проекта и откройте адрес из терминала.</p>
+  <div id="app" v-cloak>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-report" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 16h8m-8-4h3"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6c-2.5-2-5.5-2-9-1v14c3.5-1 6.5-1 9 1 2.5-2 5.5-2 9-1V5c-3.5-1-6.5-1-9 1Zm0 0v14"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="m10.3 4.5-7.9 13A1.6 1.6 0 0 0 3.8 20h16.4a1.6 1.6 0 0 0 1.4-2.5l-7.9-13a2 2 0 0 0-3.4 0zM12 9v4m0 3h.01"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24"><path d="M3 19h18M5 15v-3m5 3V9m5 6V6m5 9V3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="m14 6 4 4M4 20l5-1L20 8a2.8 2.8 0 0 0-4-4L5 15z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.7 14.1A8.8 8.8 0 0 1 9.9 3.3 9 9 0 1 0 20.7 14.1Z"/></symbol>
+  </svg>
+
+  <nav v-if="role" class="navigation" aria-label="Разделы">
+      <a href="#incidents" :aria-current="page === 'incidents' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span>Аварии</a>
+      <a href="#reports" :aria-current="page === 'reports' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-report"/></svg></span>Отчетность</a>
+      <a href="#reference" :aria-current="page === 'reference' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-book"/></svg></span>Справочная</a>
+      <a href="#solutions" :aria-current="page === 'solutions' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>База решений</a>
+      <a v-if="canSeeShifts" href="#shifts" :aria-current="page === 'shifts' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span>Отчёт смены</a>
+      <a href="#schedule" :aria-current="page === 'schedule' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span>График<span class="sr-only"> дежурств</span></a>
+      <a v-if="role === 'admin'" href="#engineers" :aria-current="page === 'engineers' ? 'page' : null"><span class="nav-icon"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg></span>Инженеры</a>
+  </nav>
+
+  <div class="workspace">
+    <header class="topbar">
+      <div class="app-title"><span class="brand" aria-hidden="true"><svg class="icon"><use href="#i-signal"/></svg></span><strong class="wordmark">svyazi<span>.net</span></strong><span class="app-description">Веб-отчётность</span></div>
+      <div class="topbar-tools">
+        <span v-if="role" class="role-name">{{ roleLabel }}</span>
+        <button v-if="role" type="button" class="button secondary logout" @click="signOut">Выйти</button>
+        <button type="button" class="icon-button theme-toggle" :aria-label="themeAction" :title="themeAction" @click="toggleTheme"><svg class="icon" aria-hidden="true"><use :href="theme === 'dark' ? '#i-sun' : '#i-moon'"/></svg></button>
+      </div>
+    </header>
+
+    <main>
+      <p v-if="initializing" role="status">Загрузка…</p>
+      <p v-if="error" class="notice" role="alert">{{ error }}</p>
+      <section v-if="!initializing && !role" class="login-panel">
+        <h1>Вход в систему</h1>
+        <form class="field-grid" @submit.prevent="signIn">
+          <label class="full-field">Логин<input v-model.trim="login" autocomplete="username" required></label>
+          <label class="full-field">Пароль<input v-model="password" type="password" autocomplete="current-password" required></label>
+          <button type="submit" class="button primary" :disabled="authenticating">{{ authenticating ? 'Вход…' : 'Войти' }}</button>
+        </form>
+      </section>
+      <transition v-if="role" name="screen" mode="out-in" appear>
+      <section v-if="page === 'incidents' || (page === 'engineers' && role !== 'admin')" id="incidents" key="incidents" aria-label="Аварии">
+        <header class="page-heading">
+          <div>
+            <h1>{{ personalEngineer ? 'Мои аварии' : 'Журнал аварий' }}</h1>
+            <p>{{ personalEngineer ? 'Аварии, назначенные вам администратором' : 'Активные аварии и события за сегодня' }}</p>
+          </div>
+          <div class="page-actions">
+              <button v-if="role !== 'engineer'" type="button" class="button primary" @click="openIncident(null, 'new')"><svg class="icon"><use href="#i-plus"/></svg>Новая авария</button>
+              <span v-else class="readonly-tag"><svg class="icon"><use href="#i-lock"/></svg>Только просмотр</span>
+          </div>
+        </header>
+
+        <div v-if="!personalEngineer" class="metrics" aria-label="Показатели журнала">
+          <article class="metric metric-emphasis"><div class="metric-top"><span class="metric-icon"><svg class="icon"><use href="#i-alert"/></svg></span><h2>Активные аварии</h2></div><strong>{{ metrics.active }}</strong><p>Категория 1: {{ metrics.critical }}</p></article>
+          <article class="metric"><div class="metric-top"><span class="metric-icon"><svg class="icon"><use href="#i-signal"/></svg></span><h2>Затронуто БС</h2></div><strong>{{ metrics.stations }}</strong><p>В активных авариях</p></article>
+          <article class="metric"><div class="metric-top"><span class="metric-icon"><svg class="icon"><use href="#i-clock"/></svg></span><h2>Суммарный простой БС</h2></div><strong>{{ formatDuration(metrics.downtime) }}</strong><p>По записям журнала</p></article>
+          <article class="metric"><div class="metric-top"><span class="metric-icon"><svg class="icon"><use href="#i-check"/></svg></span><h2>Устранено</h2></div><strong>{{ metrics.closed }}</strong><p>За сегодня</p></article>
+        </div>
+
+        <section class="journal" aria-labelledby="journal-title">
+          <div class="section-heading"><h2 id="journal-title">События в журнале</h2><time v-if="today" class="date-chip" :datetime="today"><svg class="icon"><use href="#i-calendar"/></svg>{{ dateLabel(today) }}</time></div>
+          <incident-table :incidents="journal" :personal="personalEngineer" :editable="role === 'admin'" @open="openIncident($event, role === 'admin' ? 'edit' : 'view')"></incident-table>
+        </section>
+      </section>
+
+      <section v-else-if="page === 'reports'" id="reports" key="reports" aria-labelledby="report-title">
+        <header class="page-heading"><div><h1 id="report-title">Отчетность</h1><p>Аварии по дате начала. Обе даты включены.</p></div></header>
+        <div class="report-period">
+          <h2>Период отчёта</h2>
+          <form class="period-fields" @submit.prevent="loadReport()">
+            <label>С<input type="date" v-model="period.from" :disabled="loading" required></label>
+            <label>По<input type="date" v-model="period.to" :min="period.from" :disabled="loading" required></label>
+            <button type="submit" class="button primary" :disabled="loading">{{ loading ? 'Загрузка…' : 'Сформировать' }}</button>
+          </form>
+          <div v-if="latest" class="report-presets" aria-label="Периоды до последней даты в журнале">
+            <span>До последней даты в журнале</span>
+            <button v-for="days in [1, 7, 30]" :key="days" type="button" class="button secondary" :disabled="loading" @click="setReportPeriod(days)">{{ days === 1 ? '1 день' : days === 7 ? '7 дней' : '30 дней' }}</button>
+          </div>
+        </div>
+        <p v-if="reportError" class="notice report-notice" role="alert">{{ reportError }}</p>
+        <div v-if="shownPeriod" class="section-heading report-results">
+          <div><h2>События за период</h2><p aria-live="polite">{{ reportPeriodLabel }} <span class="report-count">· {{ report.length }} записей</span></p></div>
+          <div class="report-export">
+            <label><span class="sr-only">Формат отчёта</span><select v-model="exportFormat" :disabled="exporting"><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (UTF-8)</option></select></label>
+            <button type="button" class="button secondary" :disabled="!canExport" @click="downloadReport"><svg class="icon"><use href="#i-download"/></svg>{{ exporting ? 'Выгрузка…' : 'Скачать отчёт' }}</button>
+          </div>
+        </div>
+        <p v-if="periodChanged && !loading" class="report-hint" role="status">Даты изменены. Сформируйте отчёт для нового периода.</p>
+        <p v-if="exportError" class="notice" role="alert">{{ exportError }}</p>
+        <div :aria-busy="loading">
+          <incident-table v-if="shownPeriod" :incidents="report" report :editable="role === 'admin'" @open="openIncident($event, role === 'admin' ? 'edit' : 'view')"></incident-table>
+        </div>
+      </section>
+      <section v-else-if="page === 'reference'" id="reference" key="reference" aria-labelledby="reference-title">
+        <header class="page-heading"><div><h1 id="reference-title">Справочная</h1><p>Базовые станции и первичная диагностика</p></div></header>
+        <div class="reference-nav" aria-label="Разделы справочной">
+          <button type="button" class="button secondary" :aria-pressed="referenceTab === 'stations'" @click="referenceTab = 'stations'"><svg class="icon" aria-hidden="true"><use href="#i-signal"/></svg>Базовые станции</button>
+          <button type="button" class="button secondary" :aria-pressed="referenceTab === 'solutions'" @click="referenceTab = 'solutions'"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>Типовые проблемы</button>
+        </div>
+        <section v-if="referenceTab === 'stations'" class="table-card reference-panel" aria-labelledby="stations-title" :aria-busy="stationLoading">
+          <header class="reference-panel-header"><h2 id="stations-title">Базовые станции и сетевые объекты</h2><p class="cell-detail">По данным журнала аварий, доступных вашей роли.</p></header>
+          <div class="reference-search field-grid">
+            <label>Поиск объекта<input type="search" v-model="stationQuery" @input="stationLimit = 20" placeholder="Код, название, адрес или тип сети"></label>
+            <label>Технический центр<select v-model="stationCenter" @change="stationLimit = 20"><option value="">Все ТЦ</option><option v-for="center in stationCenters" :key="center">{{ center }}</option></select></label>
+          </div>
+          <p v-if="stationLoading" class="empty-state" role="status">Загрузка справочника…</p>
+          <div v-else-if="stationError" class="reference-retry"><p role="alert">{{ stationError }}</p><button type="button" class="button secondary" @click="loadStations">Повторить</button></div>
+          <p v-else-if="!filteredStations.length" class="empty-state">{{ stations.length ? 'По заданным условиям объекты не найдены.' : 'Нет доступных записей об объектах.' }}</p>
+          <template v-else>
+            <ul class="reference-stations">
+              <li v-for="station in filteredStations.slice(0, stationLimit)" :key="JSON.stringify(station)"><strong>{{ station.element }}</strong><p class="cell-detail">{{ [station.center, station.direction, station.network].filter(Boolean).join(' · ') || 'ТЦ и тип сети не указаны' }}</p></li>
+            </ul>
+            <div class="table-footer"><span role="status">Показано {{ Math.min(stationLimit, filteredStations.length) }} из {{ filteredStations.length }}</span><button v-if="stationLimit < filteredStations.length" type="button" class="button secondary" @click="stationLimit += 20">Показать ещё</button></div>
+          </template>
+        </section>
+        <section v-else class="table-card reference-panel" aria-labelledby="solutions-title">
+          <header class="reference-panel-header"><h2 id="solutions-title">Первичная диагностика</h2><p class="cell-detail">Соберите данные для инженера ТЦ и зафиксируйте результаты в карточке аварии.</p></header>
+          <details><summary>Базовая станция недоступна</summary><ol><li>Сверьте код объекта, время первого сигнала и состояние соседних станций.</li><li>Проверьте по мониторингу наличие аварии питания, доступность управления и состояние транспорта.</li><li>Сохраните события и показания мониторинга, укажите недоступные услуги и передайте карточку в ТЦ.</li></ol></details>
+          <details><summary>Отключение питания или работа от АКБ</summary><ol><li>Сверьте аварии электросети, выпрямителя и перехода на резерв по телеметрии.</li><li>Зафиксируйте время перехода на АКБ или ГУ и фактический интервал работы каждого источника.</li><li>Передайте показания ответственному за электропитание. Работы на оборудовании выполняются по инструкции объекта.</li></ol></details>
+          <details><summary>Link Down или нестабильный транспорт</summary><ol><li>Проверьте состояние порта и журнал событий на обоих концах канала.</li><li>Сопоставьте время разрыва и счётчики ошибок. По регламенту проверьте соединения и трансиверы.</li><li>Укажите участок канала, время и направление деградации в карточке.</li></ol><p><a class="ticket-link" href="https://www.cisco.com/c/en/us/support/docs/routers/asr-1000-series-aggregation-services-routers/200633-Troubleshooting-interface-down-issues.html" target="_blank" rel="noopener noreferrer">Документация Cisco по Link Down</a></p></details>
+          <details><summary>Пропала связь в одном секторе или повторяется авария</summary><ol><li>Уточните затронутые секторы и технологии. Сверьте время и коды тревог в мониторинге.</li><li>Сопоставьте предыдущие случаи и выполненные работы. При локальном отказе сектора укажите «С» в количестве БС.</li><li>Для повторной аварии зафиксируйте совпадающие симптомы и передайте инженеру ТЦ для проверки причины.</li></ol></details>
+          <details><summary>Высокая загрузка или падение скорости связи</summary><ol><li>Уточните сектор, технологию и интервал. Сравните загрузку радиоресурсов, число абонентов и скорость с обычными значениями для этого времени.</li><li>Сверьте загрузку транспортного канала в тот же интервал. Проверьте, затронуты ли соседние секторы.</li><li>Передайте графики загрузки и скорости инженеру ТЦ с указанием времени и сектора.</li></ol></details>
+          <details><summary>Потери пакетов и рост ошибок CRC</summary><ol><li>Снимите два показания счётчиков на концах канала с отметками времени. Сравните прирост ошибок и отброшенных пакетов.</li><li>Сопоставьте ошибки с загрузкой порта и временем жалоб. При росте CRC передайте инженеру данные для проверки порта, линии и трансиверов.</li></ol><p><a class="ticket-link" href="https://docs.kernel.org/networking/statistics.html" target="_blank" rel="noopener noreferrer">Счётчики сетевых интерфейсов Linux</a></p></details>
+          <details><summary>Потеря синхронизации GNSS или PTP</summary><ol><li>Запишите время тревоги и активный источник синхронизации в мониторинге. Проверьте статус резервного источника и затронутые секторы.</li><li>Сравните события по соседним объектам. Передайте инженеру статус источников и перечень затронутых технологий.</li></ol><p><a class="ticket-link" href="https://www.ericsson.com/en/reports-and-papers/further-insights/tech-insights-middle-east-africa/role-of-synchronization-in-empowering-5g-networks" target="_blank" rel="noopener noreferrer">Синхронизация мобильной сети · Ericsson</a></p></details>
+          <details><summary>Высокая температура или авария вентиляции</summary><ol><li>Сверьте показания датчиков и время тревоги с состоянием вентиляции и кондиционирования в мониторинге.</li><li>Зафиксируйте тренд температуры и затронутое оборудование. Передайте заявку ответственному за объект для проверки по местному регламенту.</li></ol></details>
+          <details><summary>Нет телеметрии, но связь работает</summary><ol><li>Проверьте время последнего опроса, доступность управления и состояние других объектов той же системы мониторинга.</li><li>Сверьте состояние услуг по независимому источнику. Укажите в карточке, потерян ли мониторинг или подтверждён перерыв связи.</li></ol></details>
+        </section>
+      </section>
+      <section v-else-if="page === 'solutions'" id="solutions" key="solutions" aria-labelledby="knowledge-title">
+        <header class="page-heading solution-heading">
+          <div><h1 id="knowledge-title">База решений</h1><p>Практические случаи диагностики и устранения аварий</p></div>
+          <button v-if="role === 'engineer'" type="button" class="button primary" :aria-expanded="solutionFormOpen" @click="solutionFormOpen = !solutionFormOpen"><svg class="icon" aria-hidden="true"><use :href="solutionFormOpen ? '#i-close' : '#i-plus'"/></svg>{{ solutionFormOpen ? 'Свернуть форму' : 'Добавить решение' }}</button>
+        </header>
+        <form v-if="role === 'engineer' && solutionFormOpen" class="report-period solution-form" @submit.prevent="submitSolution">
+          <h2>Новое решение</h2>
+          <div class="field-grid">
+            <label class="full-field">Название<input v-model.trim="solutionDraft.title" maxlength="160" placeholder="Например, LTE-сектор не поднялся после отключения питания" required></label>
+            <label>Станция<input v-model.trim="solutionDraft.station" maxlength="450" placeholder="Код и название станции" required></label>
+            <label>Дата и время ремонта<input v-model="solutionDraft.repairedAt" type="datetime-local" :max="now.slice(0,16)" required></label>
+            <label class="full-field">Симптомы<textarea v-model.trim="solutionDraft.symptoms" maxlength="2000" rows="2" placeholder="Что наблюдалось, на каком оборудовании, какие были ошибки" required></textarea></label>
+          </div>
+          <fieldset v-for="(variant, index) in solutionDraft.variants" :key="index" class="solution-variant" :disabled="solutionSaving">
+            <legend>Диагностика и устранение</legend>
+            <div class="field-grid">
+              <label class="full-field">Когда применять<input v-model.trim="variant.condition" maxlength="1000" placeholder="Условие, модель оборудования или результат диагностики"></label>
+              <label>Что проверить<textarea v-model.trim="variant.checks" maxlength="1000" rows="3" required></textarea></label>
+              <label>Как устранить<textarea v-model.trim="variant.repair" maxlength="1000" rows="3" required></textarea></label>
+              <label class="full-field">Как подтвердить результат<textarea v-model.trim="variant.verification" maxlength="1000" rows="2" placeholder="Например, тревоги погасли, сектор в работе"></textarea></label>
+              <button v-if="solutionDraft.variants.length > 1" type="button" class="button secondary solution-remove" @click="solutionDraft.variants.splice(index, 1)">Убрать вариант {{ index + 1 }}</button>
+            </div>
+          </fieldset>
+          <div class="solution-actions">
+            <button type="button" class="button secondary" :disabled="solutionDraft.variants.length >= 4 || solutionSaving" @click="addSolutionVariant">Добавить вариант</button>
+            <button type="submit" class="button primary" :disabled="solutionSaving || solutionLoading">{{ solutionSaving ? 'Сохранение…' : 'Опубликовать решение' }}</button>
+          </div>
+        </form>
+        <div v-if="solutionError" class="notice report-notice" role="alert">{{ solutionError }} <button v-if="!solutionFormOpen" type="button" class="button secondary" @click="loadSolutions">Повторить</button></div>
+        <section class="table-card reference-panel solution-list" aria-labelledby="solution-list-title" :aria-busy="solutionLoading">
+          <header class="reference-panel-header"><h2 id="solution-list-title">Опубликованные решения</h2></header>
+          <div class="field-grid solution-search"><label class="full-field">Поиск решений<input type="search" v-model="solutionQuery" @input="solutionLimit = 20" placeholder="Код ошибки, симптом, оборудование или ТЦ"></label></div>
+          <p v-if="solutionLoading" class="empty-state" role="status">Загрузка решений…</p>
+          <p v-else-if="!filteredSolutions.length" class="empty-state">{{ solutionError && !solutions.length ? 'Список решений недоступен.' : solutions.length ? 'По запросу ничего не найдено.' : 'Решений пока нет.' }}</p>
+          <template v-else>
+            <details v-for="entry in filteredSolutions.slice(0, solutionLimit)" :key="entry.id">
+              <summary>{{ entry.title }}</summary>
+              <dl class="shift-report-details">
+                <dt>{{ entry.engineerId ? 'Инженер' : 'Автор' }}</dt><dd>{{ entry.author }}<template v-if="entry.center"> · ТЦ {{ entry.center }}</template></dd>
+                <template v-if="entry.station"><dt>Станция</dt><dd>{{ entry.station }}</dd></template>
+                <template v-if="entry.repairedAt"><dt>Ремонт выполнен</dt><dd>{{ shiftTime(entry.repairedAt) }} (UTC+5)</dd></template>
+                <template v-else><dt>Сведения о ремонте</dt><dd>Дата и станция не указаны; типовая инструкция или ранее добавленная запись.</dd></template>
+                <dt>Опубликовано</dt><dd>{{ shiftTime(entry.createdAt) }}</dd>
+              </dl>
+              <dl class="shift-report-details"><dt>Симптомы</dt><dd>{{ entry.symptoms }}</dd></dl>
+              <div v-for="(variant, index) in entry.variants" :key="index" class="solution-result">
+                <h3 v-if="variant.condition">{{ variant.condition }}</h3>
+                <dl class="shift-report-details"><dt>Проверка</dt><dd>{{ variant.checks }}</dd><dt>Устранение</dt><dd>{{ variant.repair }}</dd><template v-if="variant.verification"><dt>Подтверждение результата</dt><dd>{{ variant.verification }}</dd></template></dl>
+              </div>
+            </details>
+            <div class="table-footer"><span role="status">Показано {{ Math.min(solutionLimit, filteredSolutions.length) }} из {{ filteredSolutions.length }}</span><button v-if="solutionLimit < filteredSolutions.length" type="button" class="button secondary" @click="solutionLimit += 20">Показать ещё</button></div>
+          </template>
+        </section>
+      </section>
+      <section v-else-if="page === 'shifts' && canSeeShifts" id="shifts" key="shifts" aria-labelledby="shifts-title">
+        <header class="page-heading"><div><h1 id="shifts-title">Отчёт смены</h1><p>Итоги работы и задачи для следующей смены</p></div></header>
+        <form v-if="role === 'duty'" class="report-period shift-form" @submit.prevent="submitShift">
+          <h2>Закрытие смены</h2>
+          <p class="cell-detail">Начало и окончание указываются по времени Екатеринбурга (UTC+5).</p>
+          <div class="field-grid">
+            <label class="full-field">ФИО дежурного<input v-model.trim="shift.operator" required maxlength="120" autocomplete="name"></label>
+            <label>Начало смены<input v-model="shift.start" required type="datetime-local"></label>
+            <label>Окончание смены<input v-model="shift.end" required type="datetime-local"></label>
+            <label class="full-field">Итоги смены<textarea v-model.trim="shift.summary" required maxlength="2000" rows="3" placeholder="Ключевые события, выполненные работы или «Событий не было»"></textarea></label>
+            <label class="full-field">Открытые аварии<textarea v-model.trim="shift.openIncidents" maxlength="2000" rows="2" placeholder="Номера PW / NTT, состояние и ответственные"></textarea></label>
+            <label class="full-field">Передача следующей смене<textarea v-model.trim="shift.handover" maxlength="2000" rows="2" placeholder="Что проверить, кому сообщить, ближайшие сроки"></textarea></label>
+          </div>
+          <button type="submit" class="button primary" :disabled="shiftSaving || shiftLoading">{{ shiftSaving ? 'Сохранение…' : 'Сдать отчёт' }}</button>
+        </form>
+        <p v-if="shiftError" class="notice report-notice" role="alert">{{ shiftError }}</p>
+        <section class="table-card reference-panel shift-history" aria-labelledby="shift-history-title" :aria-busy="shiftLoading">
+          <header class="reference-panel-header"><h2 id="shift-history-title">Сданные отчёты</h2></header>
+          <p v-if="shiftLoading" class="empty-state" role="status">Загрузка отчётов…</p>
+          <p v-else-if="!shiftReports.length" class="empty-state">{{ shiftError ? 'Список отчётов недоступен.' : 'Отчётов пока нет.' }}</p>
+          <details v-for="report in shiftReports" :key="report.id">
+            <summary>{{ shiftTime(report.start) }} — {{ shiftTime(report.end) }} · {{ report.operator }}</summary>
+            <dl class="shift-report-details">
+              <dt>Итоги смены</dt><dd>{{ report.summary }}</dd>
+              <dt>Открытые аварии</dt><dd>{{ report.openIncidents || '—' }}</dd>
+              <dt>Передача следующей смене</dt><dd>{{ report.handover || '—' }}</dd>
+              <dt>Сдан</dt><dd>{{ shiftTime(report.submittedAt) }}</dd>
+            </dl>
+          </details>
+        </section>
+      </section>
+      <section v-else-if="page === 'schedule'" id="schedule" key="schedule" aria-labelledby="schedule-title">
+        <header class="page-heading solution-heading">
+          <div><h1 id="schedule-title">График дежурств</h1><p>Время Екатеринбурга (UTC+5)</p></div>
+          <button v-if="role === 'admin'" type="button" class="button primary" :disabled="scheduleSaving" @click="editAssignment()"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Добавить дежурство</button>
+        </header>
+        <div class="report-period"><label>Технический центр<select v-model="scheduleCenter"><option value="">Все ТЦ</option><option v-for="center in scheduleCenters" :key="center" :value="center">{{ center }}</option></select></label></div>
+        <div v-if="!scheduleLoading && !scheduleError" class="schedule-summary">
+          <article class="metric metric-emphasis">
+            <div class="metric-top"><span class="metric-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg></span><h2>На дежурстве сейчас</h2></div>
+            <p v-if="!activeDuty.length">Нет назначенных дежурных</p>
+            <ul v-else><li v-for="shift in activeDuty" :key="shift.id"><b>{{ shift.operator }}</b><span>До {{ shiftTime(shift.end) }}</span></li></ul>
+          </article>
+          <article class="metric">
+            <div class="metric-top"><span class="metric-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></span><h2>Следующее дежурство</h2></div>
+            <p v-if="!nextDuty">Пока не запланировано</p>
+            <ul v-else><li><b>{{ nextDuty.operator }}</b><span>С {{ shiftTime(nextDuty.start) }}</span></li></ul>
+          </article>
+        </div>
+        <form v-if="role === 'admin' && scheduleDraft" class="report-period shift-form schedule-form" @submit.prevent="changeAssignment(scheduleDraft.id ? 'PUT' : 'POST', scheduleDraft)">
+          <h2>{{ scheduleDraft.id ? 'Изменить дежурство' : 'Новое дежурство' }}</h2>
+          <div class="field-grid">
+            <label class="full-field">Дежурный инженер<select ref="scheduleOperator" v-model.number="scheduleDraft.engineerId" required><option :value="0" disabled>Выберите инженера</option><option v-for="person in engineers" :key="person.id" :value="person.id">{{ person.name }} · {{ person.region }} · {{ person.center }}</option></select></label>
+            <label>Начало дежурства<input v-model="scheduleDraft.start" required type="datetime-local" step="1"></label>
+            <label>Окончание дежурства<input v-model="scheduleDraft.end" required type="datetime-local" step="1"></label>
+            <label class="full-field">Примечание<textarea v-model.trim="scheduleDraft.note" rows="2" maxlength="500"></textarea></label>
+          </div>
+          <div class="solution-actions"><button type="submit" class="button primary" :disabled="scheduleSaving || scheduleLoading">Сохранить</button><button type="button" class="button secondary" :disabled="scheduleSaving" @click="scheduleDraft = null">Отмена</button></div>
+        </form>
+        <div v-if="scheduleError" class="notice report-notice" role="alert">{{ scheduleError }} <button type="button" class="button secondary" @click="loadSchedule">Обновить график</button></div>
+        <section class="table-card reference-panel schedule-list" aria-labelledby="schedule-list-title" :aria-busy="scheduleLoading">
+          <header class="reference-panel-header section-heading"><h2 id="schedule-list-title">Смены</h2><label class="schedule-month">Месяц <input v-model="scheduleMonth" type="month"></label></header>
+          <p v-if="scheduleLoading" class="empty-state" role="status">Загрузка графика…</p>
+          <p v-else-if="!monthlyDuty.length" class="empty-state">{{ scheduleError ? 'График недоступен.' : 'На этот период дежурства не назначены.' }}</p>
+          <ul v-else class="reference-stations">
+            <li v-for="shift in monthlyDuty" :key="shift.id" class="schedule-row">
+              <div><b>{{ shift.operator }}</b><p class="cell-detail">{{ shiftTime(shift.start) }} — {{ shiftTime(shift.end) }}</p><p v-if="shift.note" class="schedule-note">{{ shift.note }}</p></div>
+              <div v-if="role === 'admin'" class="schedule-row-actions"><button type="button" class="button secondary" :disabled="scheduleSaving" @click="editAssignment(shift)">Изменить</button><button type="button" class="button secondary" :disabled="scheduleSaving" @click="changeAssignment('DELETE', shift)">Удалить</button></div>
+            </li>
+          </ul>
+        </section>
+      </section>
+      <section v-else id="engineers" key="engineers" aria-labelledby="engineers-title">
+        <header class="page-heading"><div><h1 id="engineers-title">Инженеры</h1><p>Учётные записи по техническим центрам</p></div></header>
+        <form class="report-period engineer-form" @submit.prevent="addEngineer">
+          <h2>Добавить инженера</h2>
+          <div class="field-grid">
+            <label>Имя<input v-model.trim="newEngineer.name" required maxlength="120" autocomplete="off"></label>
+            <label>Регион<input v-model.trim="newEngineer.region" required maxlength="120"></label>
+            <label>ТЦ<select v-model="newEngineer.center" required><option value="">Выберите ТЦ</option><option v-for="center in catalogs.center" :key="center">{{ center }}</option></select></label>
+            <label>Логин<input v-model.trim="newEngineer.login" required minlength="3" maxlength="40" autocomplete="off" autocapitalize="none"></label>
+            <label>Пароль<input v-model="newEngineer.password" required minlength="8" type="password" autocomplete="new-password"></label>
+            <button type="submit" class="button primary" :disabled="addingEngineer">{{ addingEngineer ? 'Сохранение…' : 'Создать учётную запись' }}</button>
+          </div>
+        </form>
+        <p v-if="engineerError" class="notice report-notice" role="alert">{{ engineerError }}</p>
+        <div class="table-card engineers-list">
+          <p v-if="!engineers.length" class="empty-state">Инженеры ещё не добавлены</p>
+          <ul v-else><li v-for="person in engineers" :key="person.id"><div><strong>{{ person.name }}</strong><span class="cell-detail">{{ person.login }}</span></div><span class="date-chip">{{ person.region }} · {{ person.center }}</span></li></ul>
+        </div>
+      </section>
+      </transition>
+    </main>
+    <div class="toast-region" role="status" aria-atomic="true">
+      <transition name="toast">
+        <p v-if="savedMessage && role" class="success-toast"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>{{ savedMessage }}</p>
+      </transition>
+    </div>
+  </div>
+
+  <dialog class="drawer" ref="drawer" :class="{ 'drawer-visible': drawerVisible }" aria-labelledby="drawer-title" @cancel.prevent="closeIncident" @close="resetDrawer">
+    <transition name="drawer-panel" @after-leave="finishClose">
+    <div v-show="drawerVisible" class="drawer-panel">
+    <header class="drawer-header"><div><h2 id="drawer-title">{{ drawerTitle }}</h2><p>{{ drawerSubtitle }}</p></div><button type="button" class="icon-button" ref="closeButton" @click="closeIncident" aria-label="Закрыть"><svg class="icon"><use href="#i-close"/></svg></button></header>
+    <form id="incident-form" class="drawer-body" ref="drawerBody" @submit.prevent="saveIncident">
+      <fieldset :disabled="drawerMode === 'view'"><legend><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>Событие</legend><div class="field-grid">
+        <label>Номер PW / NTT<input name="ticket" v-model="draft.ticket" type="text" placeholder="Номер или ссылка в CRM"></label>
+        <label>Направление<select name="direction" v-model="draft.direction"><option value="">Выберите направление</option><option v-if="draft.direction && !catalogs.direction.includes(draft.direction)" :value="draft.direction">{{ draft.direction }}</option><option v-for="value in catalogs.direction" :key="value" :value="value">{{ value }}</option></select></label>
+        <label>ТЦ<select name="center" v-model="draft.center" @change="draft.engineerId = 0"><option value="">Выберите ТЦ</option><option v-if="draft.center && !catalogs.center.includes(draft.center)" :value="draft.center">{{ draft.center }}</option><option v-for="value in catalogs.center" :key="value" :value="value">{{ value }}</option></select></label>
+        <label>Категория<select name="category" v-model="draft.category"><option value="">Выберите категорию</option><option v-if="draft.category && !catalogs.category.includes(draft.category)" :value="draft.category">{{ draft.category }}</option><option v-for="value in catalogs.category" :key="value" :value="value">{{ value }}</option></select></label>
+        <label>Тип сети<select name="network" v-model="draft.network"><option value="">Выберите сеть</option><option v-if="draft.network && !catalogs.network.includes(draft.network)" :value="draft.network">{{ draft.network }}</option><option v-for="value in catalogs.network" :key="value" :value="value">{{ value }}</option></select></label>
+        <label>Тип аварии<select name="type" v-model="draft.type"><option value="">Выберите тип</option><option v-if="draft.type && !catalogs.type.includes(draft.type)" :value="draft.type">{{ draft.type }}</option><option v-for="value in catalogs.type" :key="value" :value="value">{{ value }}</option></select></label>
+        <label class="full-field">Сетевой элемент / услуга<textarea name="element" v-model="draft.element" rows="2" placeholder="Адрес или адреса базовых станций"></textarea></label>
+        <div v-if="draft.repeatCount" class="full-field repeat-notice"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg><div><strong>Повторные аварии · нужна проверка</strong><p>Аварий на этом объекте за 30 дней к дате начала: {{ draft.repeatCount }}, включая текущую запись.</p></div></div>
+        <label>Количество БС<input name="stations" v-model="draft.stations" type="text" placeholder="До 10 000 или С (сектор)"></label>
+        <label>Тип оборудования<input name="equipment" v-model="draft.equipment" type="text" placeholder="Описание оборудования"></label>
+        <label class="full-field">Описание события<textarea name="summary" v-model="draft.summary" rows="2" placeholder="Что произошло"></textarea></label>
+        <label v-if="role === 'admin'" class="full-field">Ответственный инженер<select name="engineerId" v-model="draft.engineerId" :disabled="!availableEngineers.length"><option :value="0">{{ draft.center ? (availableEngineers.length ? 'Не назначен' : 'В этом ТЦ нет инженеров') : 'Сначала выберите ТЦ' }}</option><option v-for="person in availableEngineers" :key="person.id" :value="person.id">{{ person.name }} ({{ person.login }})</option></select></label>
+        <p v-else-if="draft.engineerName" class="full-field cell-detail">Ответственный инженер: {{ draft.engineerName }}</p>
+      </div></fieldset>
+      <div class="form-side">
+      <fieldset :disabled="drawerMode === 'view'"><legend><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>Время и простой</legend><div class="field-grid">
+        <label>Начало<input name="start" v-model="draft.start" type="datetime-local" step="1"></label>
+        <div class="end-field"><label>Окончание<input name="end" v-model="draft.end" :disabled="draft.ongoing" type="datetime-local" step="1"></label><label class="checkbox-label"><input name="ongoing" v-model="draft.ongoing" type="checkbox">НВ (настоящее время)</label></div>
+        <label>Время работы от АКБ<input name="battery" v-model="draft.battery" type="text" placeholder="чч.мм.сс"></label>
+        <label>Время работы от ГУ<input name="generator" v-model="draft.generator" type="text" placeholder="чч.мм.сс"></label>
+        <label>Длительность аварии<input name="duration" :value="formatDuration(calculated.duration)" type="text" placeholder="Авторасчёт" readonly></label>
+        <label>Время перерыва связи на одну БС<input name="outage" v-model="draft.outage" type="text" placeholder="чч.мм.сс"></label>
+        <label class="full-field">Общее время простоя БС<input name="total" :value="formatDuration(calculated.total)" type="text" placeholder="Рассчитывается автоматически" readonly></label>
+        <p v-if="/^[сc]$/i.test(draft.stations)" class="full-field cell-detail">Сектор «С» учитывается как одна единица.</p>
+      </div></fieldset>
+      <fieldset :disabled="drawerMode === 'view'"><legend><svg class="icon" aria-hidden="true"><use href="#i-report"/></svg>Уведомление</legend><div class="field-grid">
+        <label class="full-field">Кому сообщили<input name="notified" v-model="draft.notified" type="text" placeholder="Получатели уведомления"></label>
+        <label class="full-field">Подробное описание аварии<textarea name="details" v-model="draft.details" rows="3" placeholder="Подробности аварии и принятые меры"></textarea></label>
+      </div></fieldset>
+      </div>
+    </form>
+    <p v-if="formError" class="notice form-notice" role="alert">{{ formError }}</p>
+    <footer class="drawer-footer"><span v-if="drawerMode === 'view'" class="readonly-tag"><svg class="icon"><use href="#i-lock"/></svg>Только просмотр</span><button type="button" class="button secondary" @click="closeIncident">Закрыть</button><button v-if="drawerMode !== 'view'" type="submit" form="incident-form" class="button primary" :disabled="saving">{{ saving ? 'Сохранение…' : drawerMode === 'edit' ? 'Сохранить изменения' : 'Сохранить аварию' }}</button></footer>
+    </div>
+    </transition>
+  </dialog>
+  </div>
+
+  <template id="incident-table-template">
+    <div class="table-card">
+      <div class="report-period" aria-label="Фильтры и сортировка событий">
+        <label v-for="(label, key) in filterLabels" :key="key">{{ label }}<select v-model="filters[key]"><option value="">Все</option><option v-for="value in filterOptions(key)" :key="value" :value="value">{{ value }}</option></select></label>
+        <label>Сортировка<select v-model="order"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="category">По категории: 1, 2, 3</option></select></label>
+      </div>
+      <p v-if="incidents.length && !filteredRows.length" class="empty-state">По выбранным фильтрам событий нет</p>
+      <p v-if="!incidents.length" class="empty-state">{{ report ? 'За выбранный период аварий нет' : personal ? 'Вам пока не назначены аварии' : 'В журнале нет активных аварий и событий за сегодня' }}</p>
+      <template v-else>
+      <p class="table-scroll-hint">Прокрутите таблицу вправо <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></p>
+      <div class="table-scroll" ref="tableRegion" tabindex="0" :aria-label="report ? 'Таблица отчётности' : 'Таблица аварий'">
+        <table>
+          <thead><tr><th scope="col">PW / NTT</th><th scope="col">Сетевой элемент / событие</th><th scope="col">ТЦ / сеть</th><th scope="col">Кат.</th><th scope="col">Начало</th><th v-if="report" scope="col">Окончание</th><th scope="col">Статус</th><th scope="col"><span class="sr-only">Карточка аварии</span></th></tr></thead>
+          <tbody>
+            <tr v-for="incident in visibleRows" :key="incident.id">
+              <td class="ticket-cell"><a v-if="crmLink(incident.ticket)" class="ticket ticket-link" :href="crmLink(incident.ticket)" :title="incident.ticket" target="_blank" rel="noopener noreferrer">Ссылка в CRM</a><span v-else class="ticket">{{ incident.ticket || '—' }}</span></td>
+              <td class="event-cell"><span class="event-name">{{ incident.element || '—' }}</span><span class="cell-detail">{{ incident.summary }}</span><span v-if="incident.repeatCount" class="repeat-chip" title="Аварии за 30 дней к дате начала записи"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>{{ incident.repeatCount }} за 30 дней · нужна проверка</span><span v-if="incident.engineerName" class="cell-detail">Ответственный: {{ incident.engineerName }}</span></td>
+              <td><span class="cell-main">{{ incident.center || '—' }}</span><span class="cell-detail">{{ incident.network || '—' }}</span></td>
+              <td><span class="category" :class="'category-' + incident.category">{{ incident.category || '—' }}</span></td>
+              <td><span class="cell-main">{{ incident.start.slice(11,16) }}</span><span class="cell-detail">{{ dateLabel(incident.start) }}</span></td>
+              <td v-if="report">{{ incident.end ? incident.end.slice(11,16) : 'НВ' }}<span v-if="incident.end" class="cell-detail">{{ dateLabel(incident.end) }}</span></td>
+              <td><span class="status" :class="incident.end ? 'resolved' : 'active'">{{ incident.end ? 'Устранена' : 'Активна' }}</span></td>
+              <td><button type="button" class="icon-button" @click="$emit('open', incident)" :aria-label="(editable ? 'Редактировать ' : 'Открыть ') + (incident.ticket || 'аварию № ' + incident.id)"><svg class="icon" aria-hidden="true"><use :href="editable ? '#i-edit' : '#i-chevron'"/></svg></button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer"><span aria-live="polite">{{ visibleRange }}</span><div v-if="pageCount > 1" class="pagination"><button type="button" class="button secondary" :disabled="page === 1" @click="changePage(-1)" aria-label="Предыдущая страница">‹</button><span>{{ page }} / {{ pageCount }}</span><button type="button" class="button secondary" :disabled="page === pageCount" @click="changePage(1)" aria-label="Следующая страница">›</button></div></div>
+      </template>
+    </div>
+  </template>
+</body>
+</html>
