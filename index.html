@@ -362,7 +362,7 @@
 
   <template id="incident-table-template">
     <div class="table-card">
-      <div class="report-period" aria-label="Фильтры и сортировка событий">
+      <div class="table-filters" role="group" aria-label="Фильтры и сортировка событий">
         <label v-for="(label, key) in filterLabels" :key="key">{{ label }}<select v-model="filters[key]"><option value="">Все</option><option v-for="value in filterOptions(key)" :key="value" :value="value">{{ value }}</option></select></label>
         <label>Сортировка<select v-model="order"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="category">По категории: 1, 2, 3</option></select></label>
       </div>
