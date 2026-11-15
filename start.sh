@@ -37,7 +37,5 @@ log 'Настраиваю доступ к опубликованным порт�
 sh deploy/firewall.sh "$APP_PORT"
 compose ps
 install -m 0600 .local/credentials/users-passwords.tsv accounts-for-reviewers.tsv
-printf '\nПриложение: http://<IP-виртуалки>:%s\nMariaDB: только внутренняя сеть Docker, порт на хосте не опубликован.\n' "$APP_PORT"
 printf 'Учётные записи: %s/.local/credentials/users-passwords.tsv\n' "$PROJECT_DIR"
 printf 'Файл для проверяющих: %s/accounts-for-reviewers.tsv\n' "$PROJECT_DIR"
-printf 'Если сайт недоступен с другого компьютера, проверьте NAT и firewall гипервизора.\n'
