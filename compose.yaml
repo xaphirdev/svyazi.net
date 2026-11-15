@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mariadb:10.1.48
+    command: ["--sql-mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: svyazi_net_incidents
+      MYSQL_USER: svyazi_net
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    networks:
+      - database
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./scripts/mariadb-init.sh:/docker-entrypoint-initdb.d/01-databases.sh:ro
+      - ./scripts/migrate-databases.sh:/opt/svyazi.net/migrate-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysql --protocol=tcp -h 127.0.0.1 -u svyazi_net -p\"$$MYSQL_PASSWORD\" svyazi_net_users -Nse 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 4s
+      retries: 30
+    restart: unless-stopped
+  app:
+    build: .
+    networks:
+      - web
+      - database
+    env_file:
+      - .local/app.env
+    environment:
+      DB_HOST: db
+      DB_USER: svyazi_net
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      SVYAZI_NET_CREDENTIALS_DIR: /app/credentials
+      SVYAZI_NET_SEED_INITIAL_DATA: ${SEED_INITIAL_DATA:-1}
+    volumes:
+      - ./.local/credentials:/app/credentials
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "svyazi.net", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 120s
+      retries: 6
+    restart: unless-stopped
+volumes:
+  db-data:
+networks:
+  web:
+  database:
+    internal: true
