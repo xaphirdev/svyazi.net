@@ -197,15 +197,9 @@ func readEvent(row scanner, now time.Time) (event, error) {
 	return e, nil
 }
 
-func (s *store) latest(ctx context.Context, today string, engineerID int64) (string, error) {
+func (s *store) latest(ctx context.Context, today string) (string, error) {
 	var date sql.NullString
-	query := "SELECT CAST(MAX(BEGIN_TIME) AS CHAR) FROM incidents"
-	var args []any
-	if engineerID != 0 {
-		query += " WHERE engineer_id = ?"
-		args = append(args, engineerID)
-	}
-	if err := s.db.QueryRowContext(ctx, query, args...).Scan(&date); err != nil {
+	if err := s.db.QueryRowContext(ctx, "SELECT CAST(MAX(BEGIN_TIME) AS CHAR) FROM incidents").Scan(&date); err != nil {
 		return "", err
 	}
 	if date.Valid && len(date.String) >= 10 {

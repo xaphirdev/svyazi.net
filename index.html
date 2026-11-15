@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>svyazi.net · Веб-отчётность</title>
+  <title>svyazi.net</title>
   <script>
     (() => {
       let savedTheme;
@@ -54,7 +54,7 @@
 
   <div class="workspace">
     <header class="topbar">
-      <div class="app-title"><span class="brand" aria-hidden="true"><svg class="icon"><use href="#i-signal"/></svg></span><strong class="wordmark">svyazi<span>.net</span></strong><span class="app-description">Веб-отчётность</span></div>
+      <div class="app-title"><span class="brand" aria-hidden="true"><svg class="icon"><use href="#i-signal"/></svg></span><strong class="wordmark">svyazi<span>.net</span></strong></div>
       <div class="topbar-tools">
         <span v-if="role" class="role-name">{{ roleLabel }}</span>
         <button v-if="role" type="button" class="button secondary logout" @click="signOut">Выйти</button>
@@ -100,7 +100,7 @@
       </section>
 
       <section v-else-if="page === 'reports'" id="reports" key="reports" aria-labelledby="report-title">
-        <header class="page-heading"><div><h1 id="report-title">Отчетность</h1><p>Аварии по дате начала. Обе даты включены.</p></div></header>
+        <header class="page-heading"><div><h1 id="report-title">Отчетность</h1></div></header>
         <div class="report-period">
           <h2>Период отчёта</h2>
           <form class="period-fields" @submit.prevent="loadReport()">
@@ -126,6 +126,25 @@
         <div :aria-busy="loading">
           <incident-table v-if="shownPeriod" :incidents="report" report :editable="role === 'admin'" @open="openIncident($event, role === 'admin' ? 'edit' : 'view')"></incident-table>
         </div>
+        <section class="table-card reference-panel summary-panel" aria-labelledby="summary-title" :aria-busy="summaryLoading">
+          <header class="reference-panel-header"><h2 id="summary-title">Исходная сводка</h2></header>
+          <p v-if="summaryLoading" class="empty-state" role="status">Загрузка сводки…</p>
+          <div v-else-if="summaryError" class="reference-retry"><p role="alert">{{ summaryError }}</p><button type="button" class="button secondary" @click="loadSummary">Повторить</button></div>
+          <details v-for="sheet in summaryTables" :key="sheet.title">
+            <summary>{{ sheet.title }}</summary>
+            <div class="table-scroll summary-scroll" tabindex="0" :aria-label="sheet.title">
+              <table :aria-label="sheet.title">
+                <thead v-if="sheet.headers"><tr><th v-for="(header, i) in sheet.headers" :key="i" scope="col">{{ header }}</th></tr></thead>
+                <tbody>
+                  <tr v-for="(row, i) in sheet.rows" :key="i">
+                    <th v-if="row.length === 1" :colspan="sheet.headers?.length || 6">{{ row[0] }}</th>
+                    <template v-else><td v-for="column in (sheet.headers?.length || 6)" :key="column">{{ row[column - 1] }}</td></template>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
       </section>
       <section v-else-if="page === 'reference'" id="reference" key="reference" aria-labelledby="reference-title">
         <header class="page-heading"><div><h1 id="reference-title">Справочная</h1><p>Базовые станции и первичная диагностика</p></div></header>
@@ -218,18 +237,26 @@
       </section>
       <section v-else-if="page === 'shifts' && canSeeShifts" id="shifts" key="shifts" aria-labelledby="shifts-title">
         <header class="page-heading"><div><h1 id="shifts-title">Отчёт смены</h1><p>Итоги работы и задачи для следующей смены</p></div></header>
-        <form v-if="role === 'duty'" class="report-period shift-form" @submit.prevent="submitShift">
+        <form v-if="canSubmitShift" class="report-period shift-form" @submit.prevent="submitShift">
           <h2>Закрытие смены</h2>
           <p class="cell-detail">Начало и окончание указываются по времени Екатеринбурга (UTC+5).</p>
           <div class="field-grid">
-            <label class="full-field">ФИО дежурного<input v-model.trim="shift.operator" required maxlength="120" autocomplete="name"></label>
-            <label>Начало смены<input v-model="shift.start" required type="datetime-local"></label>
-            <label>Окончание смены<input v-model="shift.end" required type="datetime-local"></label>
+            <label v-if="scheduledShifts" class="full-field">Смена по графику
+              <select v-model.number="selectedShiftId" @change="setShiftPeriod" required>
+                <option value="" disabled>Выберите смену</option>
+                <option v-for="assignment in shiftAssignments" :key="assignment.id" :value="assignment.id">{{ shiftTime(assignment.start) }} — {{ shiftTime(assignment.end) }}</option>
+              </select>
+            </label>
+            <template v-else>
+              <label>Начало смены<input v-model="shift.start" required type="datetime-local" :max="now.slice(0, 16)"></label>
+              <label>Окончание смены<input v-model="shift.end" required type="datetime-local" :min="shift.start || undefined" :max="now.slice(0, 16)"></label>
+            </template>
             <label class="full-field">Итоги смены<textarea v-model.trim="shift.summary" required maxlength="2000" rows="3" placeholder="Ключевые события, выполненные работы или «Событий не было»"></textarea></label>
             <label class="full-field">Открытые аварии<textarea v-model.trim="shift.openIncidents" maxlength="2000" rows="2" placeholder="Номера PW / NTT, состояние и ответственные"></textarea></label>
             <label class="full-field">Передача следующей смене<textarea v-model.trim="shift.handover" maxlength="2000" rows="2" placeholder="Что проверить, кому сообщить, ближайшие сроки"></textarea></label>
           </div>
-          <button type="submit" class="button primary" :disabled="shiftSaving || shiftLoading">{{ shiftSaving ? 'Сохранение…' : 'Сдать отчёт' }}</button>
+          <button type="submit" class="button primary" :disabled="shiftSaving || shiftLoading || (scheduledShifts && (!shift.end || shift.end > now))">{{ shiftSaving ? 'Сохранение…' : 'Сдать отчёт' }}</button>
+          <p v-if="scheduledShifts && shift.end > now" class="cell-detail">Отчёт можно сдать после окончания смены.</p>
         </form>
         <p v-if="shiftError" class="notice report-notice" role="alert">{{ shiftError }}</p>
         <section class="table-card reference-panel shift-history" aria-labelledby="shift-history-title" :aria-busy="shiftLoading">
@@ -362,7 +389,7 @@
 
   <template id="incident-table-template">
     <div class="table-card">
-      <div class="report-period" aria-label="Фильтры и сортировка событий">
+      <div class="table-filters" role="group" aria-label="Фильтры и сортировка событий">
         <label v-for="(label, key) in filterLabels" :key="key">{{ label }}<select v-model="filters[key]"><option value="">Все</option><option v-for="value in filterOptions(key)" :key="value" :value="value">{{ value }}</option></select></label>
         <label>Сортировка<select v-model="order"><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option><option value="category">По категории: 1, 2, 3</option></select></label>
       </div>

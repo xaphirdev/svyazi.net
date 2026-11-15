@@ -26,7 +26,7 @@ function emptySolution() {
 }
 
 function emptyShift() {
-  return { engineerId: 0, operator: '', start: '', end: networkTime().slice(0, 16), summary: '', openIncidents: '', handover: '' };
+  return { start: '', end: '', summary: '', openIncidents: '', handover: '' };
 }
 
 function crmLink(value) {
@@ -84,11 +84,13 @@ createApp({
   data() {
     return {
       catalogs, journal: [], report: [], period: { from: '', to: '' }, shownPeriod: null,
+      summaryTables: null, summaryLoading: false, summaryError: '',
       today: '', role: null, roleLabel: '', login: '', password: '',
       personalEngineer: false, engineers: [], newEngineer: { center: '' }, engineerError: '', addingEngineer: false,
       referenceTab: 'stations', stations: [], stationQuery: '', stationCenter: '', stationLimit: 20,
       stationLoading: false, stationError: '', stationRequest: 0,
       shift: emptyShift(), shiftReports: [], shiftLoading: false, shiftSaving: false, shiftError: '', shiftSession: 0,
+      shiftAssignments: [], scheduledShifts: false, selectedShiftId: 0,
       solutionDraft: emptySolution(), solutions: [], solutionQuery: '', solutionLimit: 20, solutionSession: 0,
       solutionLoading: false, solutionSaving: false, solutionError: '', solutionFormOpen: false,
       schedule: [], scheduleDraft: null, scheduleMonth: networkTime().slice(0, 7), scheduleLoading: false,
@@ -100,7 +102,8 @@ createApp({
     };
   },
   computed: {
-    canSeeShifts() { return this.role === 'duty' || this.role === 'admin'; },
+    canSeeShifts() { return Boolean(this.role); },
+    canSubmitShift() { return this.scheduledShifts ? this.shiftAssignments.length > 0 : this.role === 'duty'; },
     scheduleCenters() { return [...new Set(this.schedule.map(shift => shift.center).filter(Boolean))].sort(); },
     centerSchedule() { return this.schedule.filter(shift => !this.scheduleCenter || shift.center === this.scheduleCenter); },
     activeDuty() { return this.centerSchedule.filter(shift => shift.start <= this.now && this.now < shift.end); },
@@ -180,7 +183,7 @@ createApp({
       if (!this.role) return;
       try {
         const session = await request('session');
-        if (session.role !== this.role) await this.useSession(session);
+        if (session.role !== this.role) await this.useSession(session, true);
       } catch (error) { this.showError(error); }
     }, 15000);
     try {
@@ -220,6 +223,7 @@ createApp({
       this.closeIncident();
       this.checkPageAccess();
       if (this.page === 'reference' && this.role) this.loadStations();
+      if (this.page === 'reports' && this.role) this.loadSummary();
       if (this.page === 'shifts' && this.canSeeShifts) this.loadShiftReports();
       if (this.page === 'solutions' && this.role) this.loadSolutions();
       if (this.page === 'schedule' && this.role) this.loadSchedule();
@@ -237,6 +241,7 @@ createApp({
       if (error.status === 401 && this.role) {
         this.clearSuccess();
         this.role = null;
+        this.summaryTables = null;
         this.resetStations();
         this.resetShifts();
         this.resetSolutions();
@@ -244,10 +249,10 @@ createApp({
         this.closeIncident();
       }
     },
-    async useSession(session) {
+    async useSession(session, preserveShift = false) {
       this.role = session.role;
       this.resetStations();
-      this.resetShifts();
+      if (!preserveShift) this.resetShifts();
       this.resetSolutions();
       this.resetSchedule();
       this.roleLabel = session.roleLabel;
@@ -255,6 +260,7 @@ createApp({
       this.engineers = [];
       if (!this.role) return;
       if (this.page === 'reference') this.loadStations();
+      if (this.page === 'reports') this.loadSummary();
       this.checkPageAccess();
       if (this.page === 'shifts') this.loadShiftReports();
       if (this.page === 'solutions') this.loadSolutions();
@@ -283,6 +289,7 @@ createApp({
         await request('logout', 'POST', {});
         this.clearSuccess();
         this.role = null;
+        this.summaryTables = null;
         this.resetStations();
         this.resetShifts();
         this.resetSolutions();
@@ -299,6 +306,20 @@ createApp({
       this.today = today;
       this.latest = latest;
     },
+    async loadSummary() {
+      if (this.summaryTables || this.summaryLoading) return;
+      this.summaryLoading = true;
+      this.summaryError = '';
+      try {
+        const tables = await request('summary');
+        if (this.role) this.summaryTables = tables;
+      } catch (error) {
+        if (error.status === 401) this.showError(error);
+        else this.summaryError = error.message;
+      } finally {
+        this.summaryLoading = false;
+      }
+    },
     resetShifts() {
       this.shiftSession++;
       this.shiftReports = [];
@@ -306,6 +327,9 @@ createApp({
       this.shiftSaving = false;
       this.shiftError = '';
       this.shift = emptyShift();
+      this.shiftAssignments = [];
+      this.scheduledShifts = false;
+      this.selectedShiftId = 0;
     },
     async loadShiftReports() {
       if (this.shiftLoading || this.shiftSaving) return;
@@ -313,16 +337,30 @@ createApp({
       this.shiftLoading = true;
       this.shiftError = '';
       try {
-        const reports = await request('shifts');
-        if (session === this.shiftSession) this.shiftReports = reports;
+        const { reports, assignments, scheduled } = await request('shifts');
+        if (session !== this.shiftSession) return;
+        this.shiftReports = reports;
+        this.scheduledShifts = scheduled;
+        this.shiftAssignments = assignments.slice().reverse();
+        if (scheduled && !assignments.some(shift => shift.id === this.selectedShiftId)) {
+          this.selectedShiftId = this.shiftAssignments.find(shift => !reports.some(report =>
+            report.start === shift.start && report.end === shift.end && report.operator === shift.operator
+          ))?.id || 0;
+          this.setShiftPeriod();
+        }
       } catch (error) {
         if (session === this.shiftSession) this.showShiftError(error);
       } finally {
         if (session === this.shiftSession) this.shiftLoading = false;
       }
     },
+    setShiftPeriod() {
+      const assignment = this.shiftAssignments.find(shift => shift.id === this.selectedShiftId);
+      this.shift.start = assignment?.start || '';
+      this.shift.end = assignment?.end || '';
+    },
     async submitShift() {
-      if (this.shiftSaving || this.shiftLoading || this.role !== 'duty') return;
+      if (this.shiftSaving || this.shiftLoading || !this.canSubmitShift) return;
       const session = this.shiftSession;
       this.shiftSaving = true;
       this.shiftError = '';
@@ -331,7 +369,8 @@ createApp({
         await request('shifts', 'POST', this.shift);
         if (session !== this.shiftSession) return;
         this.showSuccess('Отчёт смены сохранён', 'shifts');
-        this.shift = { ...emptyShift(), operator: this.shift.operator };
+        this.shift = emptyShift();
+        this.selectedShiftId = 0;
       } catch (error) {
         if (session === this.shiftSession) this.showShiftError(error);
         return;

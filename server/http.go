@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,9 @@ const sessionAge = 8 * time.Hour
 const sessionCookie = "svyazi_net_session"
 
 var roles = map[string]string{"admin": "Администратор", "duty": "Дежурный", "engineer": "Инженер"}
+
+//go:embed summary-seed.json
+var summarySeed json.RawMessage
 
 type session struct {
 	role     string
@@ -243,6 +247,10 @@ func (a *api) route(w http.ResponseWriter, r *http.Request) error {
 	if path == "/api/shifts" {
 		return a.shifts(w, r, record, now)
 	}
+	if method == "GET" && path == "/api/summary" {
+		jsonResponse(w, http.StatusOK, summarySeed)
+		return nil
+	}
 	if path == "/api/solutions" {
 		return a.solutions(w, r, record, now)
 	}
@@ -292,7 +300,7 @@ func (a *api) route(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		today := now.In(networkZone).Format(dateOnly)
-		latest, err := a.store.latest(ctx, today, scopeID)
+		latest, err := a.store.latest(ctx, today)
 		if err != nil {
 			return err
 		}
@@ -304,7 +312,7 @@ func (a *api) route(w http.ResponseWriter, r *http.Request) error {
 		if !validDate(from) || !validDate(to) || from > to {
 			return reject(400, "Укажите корректный период. Начальная дата должна быть не позже конечной.")
 		}
-		events, err := a.store.list(ctx, now, from, to, scopeID)
+		events, err := a.store.list(ctx, now, from, to, 0)
 		if err != nil {
 			return err
 		}

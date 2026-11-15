@@ -1,5 +1,4 @@
 #!/bin/sh
-. ./deploy/repository.sh
 
 package_available() {
     LC_ALL=C apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" {available=1} END {exit !available}'
@@ -25,36 +24,47 @@ start_docker() {
 }
 
 ensure_docker() {
-    # HTTPS tools are needed before adding the signed APT repository.
+    # Package names differ between Debian, Ubuntu and their derivatives.
+    need_engine=1
+    need_compose=1
+    engine_package=''
+    if command -v docker >/dev/null 2>&1; then
+        need_engine=0
+        if docker compose version >/dev/null 2>&1; then need_compose=0; fi
+    fi
+    if command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then need_compose=0; fi
     set --
-    for package in ca-certificates curl; do
+    for package in ca-certificates curl iptables; do
         if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
             set -- "$@" "$package"
         fi
     done
-    if [ "$#" -gt 0 ]; then
+    if [ "$#" -gt 0 ] || [ "$need_engine" = 1 ] || [ "$need_compose" = 1 ]; then
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
-    fi
-    add_docker_repository
-    apt-get update
-    set --
-    if ! command -v docker >/dev/null 2>&1; then
-        set -- docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    elif ! docker compose version >/dev/null 2>&1 && ! docker-compose version >/dev/null 2>&1; then
-        # A distribution-packaged engine is kept in place; avoid a conflicting CE CLI.
-        if dpkg-query -W -f='${Status}' docker-ce-cli 2>/dev/null | grep -q '^install ok installed$'; then
-            set -- docker-compose-plugin
-        elif package_available docker-compose-v2; then
-            set -- docker-compose-v2
-        elif package_available docker-compose; then
-            set -- docker-compose
-        else
-            die 'Для установленного Docker не найден совместимый Compose.'
+        if [ "$need_engine" = 1 ]; then
+            if package_available docker.io; then
+                engine_package=docker.io
+                set -- "$@" docker.io
+            elif package_available docker-ce; then
+                engine_package=docker-ce
+                set -- "$@" docker-ce docker-ce-cli containerd.io
+            else
+                die 'В подключённых APT-репозиториях нет Docker Engine. Проверьте источники пакетов системы.'
+            fi
         fi
-    fi
-    if ! command -v iptables >/dev/null 2>&1; then set -- "$@" iptables; fi
-    if [ "$#" -gt 0 ]; then
+        if [ "$need_compose" = 1 ]; then
+            compose_package=''
+            compose_candidates='docker-compose-v2 docker-compose docker-compose-plugin'
+            if [ "$engine_package" = docker-ce ] || dpkg-query -W -f='${Status}' docker-ce-cli 2>/dev/null | grep -q '^install ok installed$'; then
+                compose_candidates='docker-compose-plugin docker-compose-v2 docker-compose'
+            fi
+            for candidate in $compose_candidates; do
+                if package_available "$candidate"; then compose_package=$candidate; break; fi
+            done
+            [ -n "$compose_package" ] || die 'В подключённых APT-репозиториях нет Docker Compose.'
+            set -- "$@" "$compose_package"
+        fi
+        log "Устанавливаю пакеты: $*"
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
     fi
     start_docker

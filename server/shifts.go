@@ -73,9 +73,17 @@ func (s *store) addShiftReport(ctx context.Context, report shiftReport, now time
 	return report, err
 }
 
-func (s *store) shiftReports(ctx context.Context) ([]shiftReport, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, operator_name, shift_start, shift_end,
- summary, open_incidents, handover, submitted_at FROM shift_reports ORDER BY shift_end DESC, id DESC`)
+func (s *store) shiftReports(ctx context.Context, engineerID int64) ([]shiftReport, error) {
+	query := `SELECT id, operator_name, shift_start, shift_end,
+ summary, open_incidents, handover, submitted_at FROM shift_reports r`
+	var args []any
+	if engineerID != 0 {
+		query += ` WHERE EXISTS (SELECT 1 FROM svyazi_net_users.duty_schedule d
+ WHERE d.engineer_id=? AND d.operator_name=r.operator_name
+ AND d.shift_start=r.shift_start AND d.shift_end=r.shift_end)`
+		args = append(args, engineerID)
+	}
+	rows, err := s.db.QueryContext(ctx, query+` ORDER BY shift_end DESC, id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,19 +101,39 @@ func (s *store) shiftReports(ctx context.Context) ([]shiftReport, error) {
 
 func (a *api) shifts(w http.ResponseWriter, r *http.Request, record session, now time.Time) error {
 	role := record.role
-	if role != "admin" && role != "duty" {
-		return reject(403, "Отчёты смен доступны дежурному и администратору.")
+	scheduled := record.engineer.Role == "engineer"
+	if role != "admin" && role != "duty" && !scheduled {
+		return reject(403, "Отчёты смен доступны дежурным и администратору.")
 	}
 	switch r.Method {
 	case "GET":
-		reports, err := a.store.shiftReports(r.Context())
+		var engineerID int64
+		if role == "engineer" {
+			engineerID = record.engineer.ID
+		}
+		reports, err := a.store.shiftReports(r.Context(), engineerID)
 		if err != nil {
 			return err
 		}
-		jsonResponse(w, http.StatusOK, reports)
+		assignments := []dutyAssignment{}
+		if scheduled {
+			all, err := a.store.dutySchedule(r.Context())
+			if err != nil {
+				return err
+			}
+			current := now.In(networkZone).Format(stamp)
+			for _, shift := range all {
+				if shift.EngineerID == record.engineer.ID && shift.Start <= current {
+					assignments = append(assignments, shift)
+				}
+			}
+		}
+		jsonResponse(w, http.StatusOK, map[string]any{
+			"reports": reports, "assignments": assignments, "scheduled": scheduled,
+		})
 		return nil
 	case "POST":
-		if role != "duty" {
+		if role != "duty" && !scheduled {
 			return reject(403, "Сдать отчёт может дежурный.")
 		}
 		var report shiftReport
@@ -113,6 +141,17 @@ func (a *api) shifts(w http.ResponseWriter, r *http.Request, record session, now
 			return err
 		}
 		report.Operator = record.engineer.Name
+		if scheduled {
+			err := a.store.db.QueryRowContext(r.Context(), `SELECT operator_name FROM svyazi_net_users.duty_schedule
+ WHERE engineer_id=? AND shift_start=? AND shift_end=?`, record.engineer.ID,
+				normalizeStamp(report.Start), normalizeStamp(report.End)).Scan(&report.Operator)
+			if errors.Is(err, sql.ErrNoRows) {
+				return reject(403, "Выберите свою смену из графика.")
+			}
+			if err != nil {
+				return err
+			}
+		}
 		saved, err := a.store.addShiftReport(r.Context(), report, now)
 		if err != nil {
 			return err

@@ -2,7 +2,6 @@
 # Shared output and bounded readiness checks. No side effects on source.
 log() { printf '\n[svyazi.net] %s\n' "$*"; }
 die() { printf '\n[svyazi.net] Ошибка: %s\n' "$*" >&2; exit 1; }
-run_logged() { "$@" >> .local/deploy.log 2>&1; }
 
 compose() {
     if [ "$COMPOSE" = plugin ]; then docker compose "$@"; else docker-compose "$@"; fi
@@ -17,6 +16,8 @@ check_host() {
     esac
     command -v apt-get >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1 || die 'Не найдены APT и dpkg.'
     [ "$(dpkg --print-architecture)" = amd64 ] || die 'MariaDB 10.1.48 в этом проекте требует amd64.'
+    [ -f compose.yaml ] && [ -f Dockerfile ] || die 'Запускайте start.sh из полного проекта.'
+    log "Система: ${PRETTY_NAME:-${ID:-Debian-compatible}} ($(dpkg --print-architecture))"
 }
 
 detect_init() {
@@ -34,9 +35,9 @@ detect_init() {
 deployment_failed() {
     printf '\n[svyazi.net] Развёртывание остановлено (код %s). Данные и контейнеры сохранены.\n' "$1" >&2
     if [ -n "${COMPOSE:-}" ]; then
-        compose logs --tail=15 db app >&2 || true
+        compose ps >&2 || true
+        compose logs --tail=40 db app >&2 || true
     fi
-    if [ -f .local/deploy.log ]; then tail -n 20 .local/deploy.log >&2; fi
 }
 
 wait_database_server() {
@@ -51,10 +52,28 @@ wait_database_server() {
     die 'Сервер MariaDB не отвечает. Проверьте root-пароль существующего тома в .env.'
 }
 
+wait_database() {
+    elapsed=0
+    while [ "$elapsed" -lt 240 ]; do
+        container=$(compose ps -q db)
+        if [ -n "$container" ]; then
+            state=$(docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container")
+            case "$state" in
+                running/healthy) return 0 ;;
+                exited/*|dead/*|*/unhealthy) break ;;
+            esac
+        fi
+        sleep 2
+        elapsed=$((elapsed+2))
+    done
+    die 'MariaDB не готова. Проверьте логи и пароли существующего тома в .env. Firewall не исправляет ошибку инициализации БД.'
+}
+
 wait_application() {
     deadline=$(($(date +%s)+180))
     while [ "$(date +%s)" -lt "$deadline" ]; do
         if curl --noproxy '*' --fail --silent --max-time 3 "http://127.0.0.1:$APP_PORT/healthz" >/dev/null; then
+            [ -s .local/credentials/users-passwords.tsv ] || die 'Не создан файл пользователей и паролей.'
             return 0
         fi
         sleep 2

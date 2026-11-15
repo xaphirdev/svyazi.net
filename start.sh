@@ -17,24 +17,27 @@ for file in deploy/*.sh deploy/*.init deploy/*.openrc deploy/*.service scripts/m
 trap 'status=$?; if [ "$status" -ne 0 ]; then deployment_failed "$status"; fi' 0
 
 check_host
-umask 077
-mkdir -p .local
-: > .local/deploy.log
-chmod 600 .local/deploy.log
-log 'Подготовка и запуск. Подробности: .local/deploy.log'
-run_logged ensure_docker
+ensure_docker
 prepare_env
 chown 65532:65532 .local/credentials
+compose config --quiet
 
-run_logged compose up -d db
-run_logged wait_database_server
+log 'Запускаю MariaDB.'
+compose up -d db
+wait_database_server
 # Init scripts are skipped by MariaDB on existing volumes, so provision them here too.
-run_logged compose exec -T db sh /docker-entrypoint-initdb.d/01-databases.sh
+compose exec -T db sh /docker-entrypoint-initdb.d/01-databases.sh
+wait_database
 
-run_logged compose up --build -d app
-run_logged wait_application
+log 'Собираю и запускаю приложение.'
+compose up --build -d app
+wait_application
 
-run_logged sh deploy/firewall.sh "$APP_PORT"
+log 'Настраиваю доступ к опубликованным портам.'
+sh deploy/firewall.sh "$APP_PORT"
+compose ps
 install -m 0600 .local/credentials/users-passwords.tsv accounts-for-reviewers.tsv
-printf '\nПриложение: http://<IP-виртуалки>:%s\n' "$APP_PORT"
+printf '\nПриложение: http://<IP-виртуалки>:%s\nMariaDB: только внутренняя сеть Docker, порт на хосте не опубликован.\n' "$APP_PORT"
+printf 'Учётные записи: %s/.local/credentials/users-passwords.tsv\n' "$PROJECT_DIR"
 printf 'Файл для проверяющих: %s/accounts-for-reviewers.tsv\n' "$PROJECT_DIR"
+printf 'Если сайт недоступен с другого компьютера, проверьте NAT и firewall гипервизора.\n'
