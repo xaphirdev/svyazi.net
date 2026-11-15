@@ -1,8 +1,0 @@
-.git
-.local
-.env
-accounts-for-reviewers.tsv
-**/users-passwords.tsv
-node_modules
-*.pdf
-*.xlsx

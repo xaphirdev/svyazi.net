@@ -1,7 +1,0 @@
-{
-  "name": "svyazi.net-network-reporting",
-  "private": true,
-  "scripts": {
-    "dev": "go run ."
-  }
-}
